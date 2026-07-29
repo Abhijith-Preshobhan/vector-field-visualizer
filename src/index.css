@@ -1,10 +1,12 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 @layer base {
   body {
     font-family: 'Inter', sans-serif;
     background-color: #f8fafc;
     color: #0f172a;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 }
 
@@ -12,13 +14,62 @@
   font-family: 'Fira Code', monospace;
 }
 
-/* Scientific Light Mode Glassmorphism Styling */
+/* Scientific Light & Dark Mode Glassmorphism Styling */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(226, 232, 240, 0.9);
+  border: 1px solid rgba(226, 232, 240, 0.95);
   box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.03);
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+.dark .glass-panel {
+  background: rgba(15, 23, 42, 0.92) !important;
+  border-color: rgba(51, 65, 85, 0.9) !important;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.6) !important;
+  color: #f8fafc !important;
+}
+
+/* Dark mode text color overrides for absolute visibility */
+.dark .text-slate-900 {
+  color: #f8fafc !important;
+}
+.dark .text-slate-800 {
+  color: #f1f5f9 !important;
+}
+.dark .text-slate-700 {
+  color: #e2e8f0 !important;
+}
+.dark .text-slate-600 {
+  color: #cbd5e1 !important;
+}
+.dark .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+/* Dark mode button & panel inner element overrides */
+.dark .bg-slate-100 {
+  background-color: rgba(30, 41, 59, 0.9) !important;
+  color: #f8fafc !important;
+}
+.dark .bg-slate-100:hover {
+  background-color: rgba(51, 65, 85, 0.95) !important;
+  color: #ffffff !important;
+}
+
+.dark .bg-slate-200 {
+  background-color: rgba(51, 65, 85, 0.8) !important;
+}
+
+.dark .border-slate-200 {
+  border-color: rgba(51, 65, 85, 0.8) !important;
+}
+
+.dark .bg-slate-100\/90 {
+  background-color: rgba(30, 41, 59, 0.95) !important;
+  border-color: rgba(51, 65, 85, 0.9) !important;
+  color: #7dd3fc !important;
 }
 
 .glass-button {
@@ -29,6 +80,12 @@
   color: #334155;
 }
 
+.dark .glass-button {
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(51, 65, 85, 0.85);
+  color: #e2e8f0;
+}
+
 .glass-button:hover {
   background: rgba(226, 232, 240, 0.9);
   border-color: rgba(148, 163, 184, 0.8);
@@ -36,11 +93,24 @@
   transform: translateY(-1px);
 }
 
+.dark .glass-button:hover {
+  background: rgba(51, 65, 85, 0.95);
+  border-color: rgba(71, 85, 105, 0.9);
+  color: #ffffff;
+}
+
 .glass-button-active {
-  background: rgba(14, 165, 233, 0.12) !important;
+  background: rgba(14, 165, 233, 0.15) !important;
   border-color: rgba(56, 189, 248, 0.7) !important;
   color: #0284c7 !important;
   box-shadow: 0 0 12px rgba(56, 189, 248, 0.2);
+}
+
+.dark .glass-button-active {
+  background: rgba(14, 165, 233, 0.3) !important;
+  border-color: rgba(56, 189, 248, 0.9) !important;
+  color: #38bdf8 !important;
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.4);
 }
 
 /* Custom scrollbars */

@@ -14,7 +14,9 @@ import {
   Info,
   ChevronRight,
   Palette,
-  RotateCw
+  RotateCw,
+  Sun,
+  Moon
 } from 'lucide-react';
 
 // Bounding box size: 12x12x12 (range -6 to +6)
@@ -40,31 +42,57 @@ const FieldShaderMaterial = new THREE.ShaderMaterial({
   `,
   transparent: true,
   depthWrite: false,
-  blending: THREE.NormalBlending, // NormalBlending ensures rich high-contrast colors on Light Canvas
+  blending: THREE.NormalBlending, // NormalBlending ensures rich high-contrast colors
 });
 
 // Perceptually uniform sequential color scales for magnitude mapping
-const COLOR_PALETTES = {
+// Reversed for Light Mode so high magnitude values stand out as dark/heavy against light backgrounds
+const COLOR_PALETTES_LIGHT = {
   viridis: {
     name: 'Viridis (Standard)',
-    // Low: Dark Purple -> Mid: Teal -> High: Yellow
-    slow: new THREE.Color('#440154'),
+    // Low: Bright Yellow -> Mid: Teal -> High: Dark Purple
+    slow: new THREE.Color('#fde725'),
     mid: new THREE.Color('#21918c'),
-    fast: new THREE.Color('#fde725'),
+    fast: new THREE.Color('#440154'),
   },
   plasma: {
     name: 'Plasma (High Contrast)',
-    // Low: Dark Blue -> Mid: Ruby/Pink -> High: Yellow
-    slow: new THREE.Color('#0d0887'),
+    // Low: Bright Yellow -> Mid: Ruby/Pink -> High: Dark Blue
+    slow: new THREE.Color('#f0f921'),
     mid: new THREE.Color('#cc4678'),
-    fast: new THREE.Color('#f0f921'),
+    fast: new THREE.Color('#0d0887'),
   },
   magma: {
     name: 'Magma (Heatmap)',
-    // Low: Deep Black/Purple -> Mid: Crimson -> High: Bright Peach/White
-    slow: new THREE.Color('#000004'),
+    // Low: Bright Peach -> Mid: Crimson -> High: Deep Black/Purple
+    slow: new THREE.Color('#fcfdbf'),
     mid: new THREE.Color('#b5367a'),
-    fast: new THREE.Color('#fcfdbf'),
+    fast: new THREE.Color('#000004'),
+  }
+};
+
+// Vibrant, luminous, high-contrast color scales for Dark Mode (Yellow to Red and glowing neon scales)
+const COLOR_PALETTES_DARK = {
+  viridis: {
+    name: 'Solar (Yellow to Red)',
+    // Low: Bright Sun Yellow -> Mid: Vivid Neon Orange -> High: Intense Crimson Red
+    slow: new THREE.Color('#fef08a'),
+    mid: new THREE.Color('#f97316'),
+    fast: new THREE.Color('#ef4444'),
+  },
+  plasma: {
+    name: 'Plasma (Neon Glow)',
+    // Low: Luminous Electric Cyan -> Mid: Neon Hot Pink -> High: Bright Gold Yellow
+    slow: new THREE.Color('#22d3ee'),
+    mid: new THREE.Color('#f43f5e'),
+    fast: new THREE.Color('#facc15'),
+  },
+  magma: {
+    name: 'Magma (Firestorm)',
+    // Low: Fiery Red-Orange -> Mid: Bright Coral -> High: Luminous White-Yellow
+    slow: new THREE.Color('#ea580c'),
+    mid: new THREE.Color('#ef4444'),
+    fast: new THREE.Color('#fffbeb'),
   }
 };
 
@@ -78,12 +106,14 @@ function VectorFieldParticles({
   tailLength,
   colorPaletteKey,
   isPaused,
+  isDarkMode,
   onFpsUpdate
 }) {
   const geomRef = useRef();
 
-  // Color objects for dynamic interpolation inside useFrame
-  const palette = COLOR_PALETTES[colorPaletteKey] || COLOR_PALETTES.viridis;
+  // Pick light or dark palettes dynamically
+  const activePalettes = isDarkMode ? COLOR_PALETTES_DARK : COLOR_PALETTES_LIGHT;
+  const palette = activePalettes[colorPaletteKey] || activePalettes.viridis;
 
   // Initialize raw Float32Arrays once or when particleCount changes
   const { positions, colors, particleMeta } = useMemo(() => {
@@ -157,8 +187,7 @@ function VectorFieldParticles({
     const posData = posAttr.array;
     const colData = colAttr.array;
 
-    const dt = Math.min(delta, 0.05) * flowSpeed;
-    const maxSpeed = 12.0;
+    const dt = Math.min(delta, 0.05);
 
     const cSlow = palette.slow;
     const cMid = palette.mid;
@@ -173,16 +202,26 @@ function VectorFieldParticles({
       // Decrease lifespan
       lifespan -= dt * 0.35;
 
+      // Collision check for Dipole Mode: If within 0.5 units of Sink (-2.5, 0, 0), force lifespan to 0
+      if (mode === 'dipole') {
+        const dxSink = x - (-2.5);
+        const dySink = y - 0;
+        const dzSink = z - 0;
+        if (dxSink * dxSink + dySink * dySink + dzSink * dzSink <= 0.25) {
+          lifespan = 0;
+        }
+      }
+
       // Respawn check: if dead or out of 12x12x12 bounds [-6, 6]
       const outOfBounds = Math.abs(x) > HALF_BOX || Math.abs(y) > HALF_BOX || Math.abs(z) > HALF_BOX;
       if (lifespan <= 0 || outOfBounds) {
-        if (mode === 'dipole' && Math.random() < 0.7) {
-          // Fix Dipole Particle Starvation: Force 70% of dead particles to respawn precisely at the Source (2.5, 0, 0) with a slight randomized jitter
-          x = 2.5 + (Math.random() - 0.5) * 0.5;
-          y = (Math.random() - 0.5) * 0.5;
-          z = (Math.random() - 0.5) * 0.5;
+        if (mode === 'dipole') {
+          // Force respawn coordinates x, y, z to be exactly at Source (2.5, 0, 0) with a tiny random jitter
+          x = 2.5 + (Math.random() - 0.5) * 0.2;
+          y = 0.0 + (Math.random() - 0.5) * 0.2;
+          z = 0.0 + (Math.random() - 0.5) * 0.2;
         } else {
-          // Remaining 30% (or non-dipole modes) spawn randomly in the bounding box
+          // Uniform random bounding box respawn for all other modes
           x = (Math.random() - 0.5) * (BOX_SIZE * 0.95);
           y = (Math.random() - 0.5) * (BOX_SIZE * 0.95);
           z = (Math.random() - 0.5) * (BOX_SIZE * 0.95);
@@ -222,20 +261,25 @@ function VectorFieldParticles({
         vz = -z * 0.3;
       }
 
-      // Speed magnitude calculation & clamping
-      let speed = Math.sqrt(vx * vx + vy * vy + vz * vz);
-      if (speed > maxSpeed) {
-        const factor = maxSpeed / speed;
-        vx *= factor;
-        vy *= factor;
-        vz *= factor;
-        speed = maxSpeed;
+      // 1. Calculate original mathematical vector magnitude (speed)
+      const speed = Math.sqrt(vx * vx + vy * vy + vz * vz);
+
+      // 2. Normalize vector so directional vector has a magnitude of 1
+      if (speed > 0.0001) {
+        vx /= speed;
+        vy /= speed;
+        vz /= speed;
+      } else {
+        vx = 0;
+        vy = 0;
+        vz = 0;
       }
 
-      // Integrate new position
-      const nextX = x + vx * dt;
-      const nextY = y + vy * dt;
-      const nextZ = z + vz * dt;
+      // 3. Move particle using normalized vector multiplied by baseline speed (dt * flowSpeed * 3.0)
+      const moveSpeed = flowSpeed * 3.0;
+      const nextX = x + vx * dt * moveSpeed;
+      const nextY = y + vy * dt * moveSpeed;
+      const nextZ = z + vz * dt * moveSpeed;
 
       // Update particle metadata
       particleMeta[i * 4 + 0] = nextX;
@@ -248,8 +292,8 @@ function VectorFieldParticles({
       posData[i * 6 + 1] = nextY;
       posData[i * 6 + 2] = nextZ;
 
-      // Tail vertex position scaled by velocity vector & tailLength factor
-      const lengthScale = tailLength * 0.08;
+      // Tail vertex position scaled by normalized directional vector & tailLength factor
+      const lengthScale = tailLength * 0.25;
       posData[i * 6 + 3] = nextX - vx * lengthScale;
       posData[i * 6 + 4] = nextY - vy * lengthScale;
       posData[i * 6 + 5] = nextZ - vz * lengthScale;
@@ -257,7 +301,7 @@ function VectorFieldParticles({
       // Opacity calculation based on sine wave of lifespan (smooth fade in/out)
       const opacity = Math.sin(lifespan * Math.PI);
 
-      // Map speed to color spectrum
+      // 4. Use original raw `speed` variable ONLY to calculate color interpolation
       const normSpeed = Math.min(speed / 4.5, 1.0);
       let r = 0, g = 0, b = 0;
 
@@ -309,15 +353,17 @@ function VectorFieldParticles({
 }
 
 /**
- * Subtle Bounding Box Wireframe for Scientific Light Theme
+ * Subtle Bounding Box Wireframe for Scientific Theme
  */
-function BoundingCube({ showBox }) {
+function BoundingCube({ showBox, isDarkMode }) {
   if (!showBox) return null;
+  const wireframeColor = isDarkMode ? "#475569" : "#64748b";
+  const cornerColor = isDarkMode ? "#94a3b8" : "#475569";
   return (
     <group>
       <mesh>
         <boxGeometry args={[BOX_SIZE, BOX_SIZE, BOX_SIZE]} />
-        <meshBasicMaterial color="#64748b" wireframe transparent opacity={0.2} />
+        <meshBasicMaterial color={wireframeColor} wireframe transparent opacity={0.2} />
       </mesh>
       {/* Corner indicator dots */}
       {[
@@ -326,7 +372,7 @@ function BoundingCube({ showBox }) {
       ].map((pos, idx) => (
         <mesh key={idx} position={pos}>
           <sphereGeometry args={[0.08, 8, 8]} />
-          <meshBasicMaterial color="#475569" transparent opacity={0.4} />
+          <meshBasicMaterial color={cornerColor} transparent opacity={0.4} />
         </mesh>
       ))}
     </group>
@@ -336,19 +382,19 @@ function BoundingCube({ showBox }) {
 /**
  * Dipole Source/Sink Markers
  */
-function DipoleMarkers({ mode }) {
+function DipoleMarkers({ mode, isDarkMode }) {
   if (mode !== 'dipole') return null;
   return (
     <group>
-      {/* Source (+ Charge / Outflow) */}
+      {/* Source (+ Charge / Outflow) at (2.5, 0, 0) */}
       <mesh position={[2.5, 0, 0]}>
-        <sphereGeometry args={[0.3, 16, 16]} />
-        <meshBasicMaterial color="#dc2626" transparent opacity={0.85} />
+        <sphereGeometry args={[0.35, 16, 16]} />
+        <meshBasicMaterial color={isDarkMode ? "#ef4444" : "#dc2626"} transparent opacity={0.85} />
       </mesh>
-      {/* Sink (- Charge / Inflow) */}
+      {/* Sink (- Charge / Inflow) at (-2.5, 0, 0) */}
       <mesh position={[-2.5, 0, 0]}>
-        <sphereGeometry args={[0.3, 16, 16]} />
-        <meshBasicMaterial color="#2563eb" transparent opacity={0.85} />
+        <sphereGeometry args={[0.35, 16, 16]} />
+        <meshBasicMaterial color={isDarkMode ? "#3b82f6" : "#2563eb"} transparent opacity={0.85} />
       </mesh>
     </group>
   );
@@ -366,8 +412,12 @@ export default function App() {
   const [showBoundingBox, setShowBoundingBox] = useState(true);
   const [autoRotate, setAutoRotate] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const [fps, setFps] = useState(60);
   const [showInfo, setShowInfo] = useState(false);
+
+  // Active color palettes dictionary based on light/dark mode
+  const activePalettes = isDarkMode ? COLOR_PALETTES_DARK : COLOR_PALETTES_LIGHT;
 
   // Field mathematical descriptions for info cards
   const modeDescriptions = {
@@ -375,13 +425,13 @@ export default function App() {
       title: 'Tornado Vortex Field',
       type: 'Curl-Heavy / Rotational Flow',
       equation: 'v_x = -1.2y,  v_y = 1.2x,  v_z = 0.5 · sin(0.5x) · cos(0.5y)',
-      desc: 'Simulates an atmospheric rotational vortex system with helical vertical displacement based on spatial trig functions.'
+      desc: 'Simulates an atmospheric rotational vortex system with helical vertical displacement and constant streamline speed.'
     },
     dipole: {
       title: 'Dipole Field (Source & Sink)',
       type: 'Divergence-Heavy / Electromagnetic Flow',
       equation: 'V(P) = k · [ (P - S₁) / |P - S₁|³ - (P - S₂) / |P - S₂|³ ]',
-      desc: 'Models flow emitting from Source (+2.5,0,0) and absorbing into Sink (-2.5,0,0) with 70% continuous source injection.'
+      desc: 'Models flow emitting from Source (+2.5,0,0) and absorbing into Sink (-2.5,0,0) with 100% source injection and sink absorption.'
     },
     saddle: {
       title: 'Saddle Point Field',
@@ -392,16 +442,16 @@ export default function App() {
   };
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-slate-50">
-      {/* R3F 3D Canvas with Scientific Light Background */}
+    <div className={`relative w-screen h-screen overflow-hidden ${isDarkMode ? 'dark bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
+      {/* R3F 3D Canvas with Scientific Dynamic Theme Background */}
       <Canvas
         camera={{ position: [12, 10, 14], fov: 45 }}
         gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
-        className="w-full h-full bg-slate-50"
+        className="w-full h-full"
       >
-        <color attach="background" args={['#f8fafc']} />
+        <color attach="background" args={[isDarkMode ? '#090d16' : '#f8fafc']} />
 
-        <ambientLight intensity={0.8} />
+        <ambientLight intensity={isDarkMode ? 0.6 : 0.8} />
 
         {/* Spatial Axis Helper at Center (Origin) */}
         <axesHelper args={[8]} />
@@ -412,10 +462,10 @@ export default function App() {
           args={[12, 12]}
           cellSize={1}
           cellThickness={1}
-          cellColor="#cbd5e1"
+          cellColor={isDarkMode ? '#1e293b' : '#cbd5e1'}
           sectionSize={3}
           sectionThickness={1.5}
-          sectionColor="#64748b"
+          sectionColor={isDarkMode ? '#475569' : '#64748b'}
           fadeDistance={30}
           infiniteGrid={false}
         />
@@ -427,11 +477,12 @@ export default function App() {
           tailLength={tailLength}
           colorPaletteKey={colorPaletteKey}
           isPaused={isPaused}
+          isDarkMode={isDarkMode}
           onFpsUpdate={setFps}
         />
 
-        <BoundingCube showBox={showBoundingBox} />
-        <DipoleMarkers mode={mode} />
+        <BoundingCube showBox={showBoundingBox} isDarkMode={isDarkMode} />
+        <DipoleMarkers mode={mode} isDarkMode={isDarkMode} />
 
         {/* Camera OrbitControls */}
         <OrbitControls
@@ -445,52 +496,68 @@ export default function App() {
         />
       </Canvas>
 
-      {/* Tailwind UI Overlay Container (pointer-events-none lets OrbitControls receive clicks) */}
+      {/* Tailwind UI Overlay Container */}
       <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-4 md:p-6 z-10">
 
-        {/* Top Bar: Title & Stats HUD */}
+        {/* Top Bar: Title, Stats HUD & Theme Switcher */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="pointer-events-auto glass-panel px-5 py-3.5 rounded-2xl shadow-xl flex items-center gap-3">
-            <div className="p-2.5 bg-sky-500/10 rounded-xl border border-sky-500/30 text-sky-600">
+            <div className="p-2.5 bg-sky-500/10 rounded-xl border border-sky-500/30 text-sky-600 dark:text-sky-400">
               <Sparkles className="w-5 h-5 animate-pulse" />
             </div>
             <div>
-              <h1 className="text-base font-semibold tracking-wide text-slate-900 flex items-center gap-2">
+              <h1 className="text-base font-semibold tracking-wide text-slate-900 dark:text-slate-100 flex items-center gap-2">
                 3D Vector Field Visualizer
-                <span className="text-[10px] font-mono font-medium uppercase tracking-wider bg-sky-500/15 text-sky-700 px-2 py-0.5 rounded-full border border-sky-500/30">
+                <span className="text-[10px] font-mono font-medium uppercase tracking-wider bg-sky-500/15 text-sky-700 dark:text-sky-300 px-2 py-0.5 rounded-full border border-sky-500/30">
                   Eulerian Flow
                 </span>
               </h1>
-              <p className="text-xs text-slate-500 font-mono mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5">
                 {particleCount.toLocaleString()} Streamlines • {fps} FPS
               </p>
             </div>
           </div>
 
-          {/* Mode Switcher Buttons */}
-          <div className="pointer-events-auto glass-panel p-1.5 rounded-2xl flex items-center gap-1 shadow-xl">
-            {[
-              { id: 'tornado', name: 'Tornado', icon: Compass },
-              { id: 'dipole', name: 'Dipole', icon: Activity },
-              { id: 'saddle', name: 'Saddle Point', icon: Layers },
-            ].map((item) => {
-              const Icon = item.icon;
-              const isActive = mode === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setMode(item.id)}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium transition-all ${
-                    isActive
-                      ? 'glass-button-active font-semibold shadow-md'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-sky-600' : ''}`} />
-                  {item.name}
-                </button>
-              );
-            })}
+          <div className="flex items-center gap-3">
+            {/* Mode Switcher Buttons */}
+            <div className="pointer-events-auto glass-panel p-1.5 rounded-2xl flex items-center gap-1 shadow-xl">
+              {[
+                { id: 'tornado', name: 'Tornado', icon: Compass },
+                { id: 'dipole', name: 'Dipole', icon: Activity },
+                { id: 'saddle', name: 'Saddle Point', icon: Layers },
+              ].map((item) => {
+                const Icon = item.icon;
+                const isActive = mode === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setMode(item.id)}
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium transition-all ${
+                      isActive
+                        ? 'glass-button-active font-semibold shadow-md'
+                        : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-sky-600 dark:text-sky-400' : ''}`} />
+                    {item.name}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Theme Toggle Button (Light/Dark Mode Switch) */}
+            <button
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className="pointer-events-auto glass-panel p-2.5 rounded-2xl flex items-center gap-2 shadow-xl text-xs font-medium text-slate-700 dark:text-slate-200 hover:scale-105 transition-transform"
+              title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {isDarkMode ? (
+                <Sun className="w-4 h-4 text-amber-400 animate-spin" style={{ animationDuration: '12s' }} />
+              ) : (
+                <Moon className="w-4 h-4 text-slate-600" />
+              )}
+              <span className="hidden sm:inline font-mono text-[11px]">{isDarkMode ? 'Light' : 'Dark'}</span>
+            </button>
           </div>
         </div>
 
@@ -500,13 +567,13 @@ export default function App() {
           {/* Left Panel: Equation HUD & Info Toggle */}
           <div className="pointer-events-auto glass-panel p-4 rounded-2xl max-w-sm w-full shadow-xl space-y-3">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-semibold text-slate-800">
-                <Info className="w-4 h-4 text-sky-600" />
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-800 dark:text-slate-200">
+                <Info className="w-4 h-4 text-sky-600 dark:text-sky-400" />
                 <span>Field Dynamics</span>
               </div>
               <button
                 onClick={() => setShowInfo(!showInfo)}
-                className="text-[11px] font-mono text-sky-600 hover:text-sky-700 flex items-center gap-1 hover:underline"
+                className="text-[11px] font-mono text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-1"
               >
                 {showInfo ? 'Hide Math' : 'Show Math'}
                 <ChevronRight className={`w-3 h-3 transition-transform ${showInfo ? 'rotate-90' : ''}`} />
@@ -514,20 +581,20 @@ export default function App() {
             </div>
 
             <div>
-              <div className="text-sm font-semibold text-slate-900">
+              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                 {modeDescriptions[mode].title}
               </div>
-              <div className="text-xs text-slate-500 mt-0.5">
+              <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 {modeDescriptions[mode].type}
               </div>
             </div>
 
             {showInfo && (
-              <div className="pt-2 border-t border-slate-200/80 space-y-2 text-xs animate-fadeIn">
-                <div className="bg-slate-100/90 p-2.5 rounded-xl font-mono text-[11px] text-sky-800 border border-slate-200 overflow-x-auto">
+              <div className="pt-2 border-t border-slate-200/80 dark:border-slate-700/80 space-y-2 text-xs animate-fadeIn">
+                <div className="bg-slate-100/90 dark:bg-slate-800/90 p-2.5 rounded-xl font-mono text-[11px] text-sky-800 dark:text-sky-300 border border-slate-200 dark:border-slate-700 overflow-x-auto">
                   {modeDescriptions[mode].equation}
                 </div>
-                <p className="text-slate-600 leading-relaxed text-[11px]">
+                <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-[11px]">
                   {modeDescriptions[mode].desc}
                 </p>
               </div>
@@ -537,16 +604,16 @@ export default function App() {
           {/* Right Panel: Interactive Sliders & Toggles */}
           <div className="pointer-events-auto glass-panel p-4 md:p-5 rounded-2xl max-w-md w-full shadow-xl space-y-4">
 
-            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-              <div className="flex items-center gap-2 text-xs font-semibold text-slate-800">
-                <Sliders className="w-4 h-4 text-sky-600" />
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-800 dark:text-slate-200">
+                <Sliders className="w-4 h-4 text-sky-600 dark:text-sky-400" />
                 <span>Simulation Parameters</span>
               </div>
 
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => setIsPaused(!isPaused)}
-                  className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 transition-colors"
+                  className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors"
                   title={isPaused ? "Play Simulation" : "Pause Simulation"}
                 >
                   {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
@@ -557,7 +624,7 @@ export default function App() {
                     setTailLength(1.0);
                     setParticleCount(7500);
                   }}
-                  className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 transition-colors"
+                  className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors"
                   title="Reset Parameters"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
@@ -570,9 +637,9 @@ export default function App() {
 
               {/* Particle Count Slider */}
               <div className="space-y-1">
-                <div className="flex justify-between text-slate-700 font-medium">
+                <div className="flex justify-between text-slate-700 dark:text-slate-300 font-medium">
                   <span>Particle Count</span>
-                  <span className="font-mono text-sky-600">{particleCount.toLocaleString()}</span>
+                  <span className="font-mono text-sky-600 dark:text-sky-400">{particleCount.toLocaleString()}</span>
                 </div>
                 <input
                   type="range"
@@ -581,15 +648,15 @@ export default function App() {
                   step="500"
                   value={particleCount}
                   onChange={(e) => setParticleCount(Number(e.target.value))}
-                  className="w-full accent-sky-600 bg-slate-200 h-1.5 rounded-lg cursor-pointer"
+                  className="w-full accent-sky-600 dark:accent-sky-400 bg-slate-200 dark:bg-slate-700 h-1.5 rounded-lg cursor-pointer"
                 />
               </div>
 
               {/* Flow Speed Slider */}
               <div className="space-y-1">
-                <div className="flex justify-between text-slate-700 font-medium">
+                <div className="flex justify-between text-slate-700 dark:text-slate-300 font-medium">
                   <span>Flow Speed</span>
-                  <span className="font-mono text-sky-600">{flowSpeed.toFixed(1)}x</span>
+                  <span className="font-mono text-sky-600 dark:text-sky-400">{flowSpeed.toFixed(1)}x</span>
                 </div>
                 <input
                   type="range"
@@ -598,15 +665,15 @@ export default function App() {
                   step="0.1"
                   value={flowSpeed}
                   onChange={(e) => setFlowSpeed(Number(e.target.value))}
-                  className="w-full accent-sky-600 bg-slate-200 h-1.5 rounded-lg cursor-pointer"
+                  className="w-full accent-sky-600 dark:accent-sky-400 bg-slate-200 dark:bg-slate-700 h-1.5 rounded-lg cursor-pointer"
                 />
               </div>
 
               {/* Tail Length Slider */}
               <div className="space-y-1">
-                <div className="flex justify-between text-slate-700 font-medium">
+                <div className="flex justify-between text-slate-700 dark:text-slate-300 font-medium">
                   <span>Tail Scale</span>
-                  <span className="font-mono text-sky-600">{tailLength.toFixed(1)}x</span>
+                  <span className="font-mono text-sky-600 dark:text-sky-400">{tailLength.toFixed(1)}x</span>
                 </div>
                 <input
                   type="range"
@@ -615,30 +682,30 @@ export default function App() {
                   step="0.1"
                   value={tailLength}
                   onChange={(e) => setTailLength(Number(e.target.value))}
-                  className="w-full accent-sky-600 bg-slate-200 h-1.5 rounded-lg cursor-pointer"
+                  className="w-full accent-sky-600 dark:accent-sky-400 bg-slate-200 dark:bg-slate-700 h-1.5 rounded-lg cursor-pointer"
                 />
               </div>
 
             </div>
 
             {/* Palette & Toggle Controls */}
-            <div className="pt-2 border-t border-slate-200/80 flex flex-wrap items-center justify-between gap-2">
+            <div className="pt-2 border-t border-slate-200/80 dark:border-slate-700/80 flex flex-wrap items-center justify-between gap-2">
 
               {/* Color Palette Selector */}
               <div className="flex items-center gap-1.5">
-                <Palette className="w-3.5 h-3.5 text-slate-500" />
-                <span className="text-[11px] text-slate-500">Palette:</span>
-                {Object.keys(COLOR_PALETTES).map((key) => (
+                <Palette className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                <span className="text-[11px] text-slate-500 dark:text-slate-400">Palette:</span>
+                {Object.keys(activePalettes).map((key) => (
                   <button
                     key={key}
                     onClick={() => setColorPaletteKey(key)}
                     className={`px-2 py-0.5 rounded text-[10px] font-mono transition-all ${
                       colorPaletteKey === key
-                        ? 'bg-sky-500/20 text-sky-700 border border-sky-500/40 font-semibold'
-                        : 'bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+                        ? 'bg-sky-500/20 text-sky-700 dark:text-sky-300 border border-sky-500/40 font-semibold'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-700'
                     }`}
                   >
-                    {COLOR_PALETTES[key].name.split(' ')[0]}
+                    {activePalettes[key].name.split(' ')[0]}
                   </button>
                 ))}
               </div>
@@ -649,20 +716,20 @@ export default function App() {
                   onClick={() => setShowBoundingBox(!showBoundingBox)}
                   className={`px-2 py-1 rounded text-[11px] font-medium transition-all ${
                     showBoundingBox
-                      ? 'bg-sky-500/15 text-sky-700 border border-sky-500/40'
-                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                      ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300 border border-sky-500/40'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                   }`}
                 >
                   Box
                 </button>
                 
-                {/* Functional & Prominent Auto-Rotate Toggle Button */}
+                {/* Auto-Rotate Toggle Button */}
                 <button
                   onClick={() => setAutoRotate(!autoRotate)}
                   className={`flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium transition-all ${
                     autoRotate
-                      ? 'bg-sky-500/15 text-sky-700 border border-sky-500/40 font-semibold shadow-sm'
-                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                      ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300 border border-sky-500/40 font-semibold shadow-sm'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                   }`}
                 >
                   <RotateCw className={`w-3 h-3 ${autoRotate ? 'animate-spin' : ''}`} style={{ animationDuration: '6s' }} />

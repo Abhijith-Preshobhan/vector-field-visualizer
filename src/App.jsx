@@ -1,29 +1,27 @@
-import React, { useRef, useMemo, useState, useEffect } from 'react';
+import React, { useRef, useMemo, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Line } from '@react-three/drei';
+import { OrbitControls, Grid } from '@react-three/drei';
 import * as THREE from 'three';
 import {
   Play,
   Pause,
   RotateCcw,
-  Zap,
   Layers,
-  Eye,
   Sliders,
-  Maximize2,
   Activity,
   Compass,
   Sparkles,
   Info,
   ChevronRight,
-  Palette
+  Palette,
+  RotateCw
 } from 'lucide-react';
 
 // Bounding box size: 12x12x12 (range -6 to +6)
 const BOX_SIZE = 12;
 const HALF_BOX = BOX_SIZE / 2;
 
-// Custom Shader Material with vertex color & alpha support for LineSegments
+// Custom Shader Material supporting per-vertex color & alpha
 const FieldShaderMaterial = new THREE.ShaderMaterial({
   vertexShader: `
     attribute vec4 color;
@@ -42,10 +40,10 @@ const FieldShaderMaterial = new THREE.ShaderMaterial({
   `,
   transparent: true,
   depthWrite: false,
-  blending: THREE.AdditiveBlending,
+  blending: THREE.NormalBlending, // NormalBlending ensures rich high-contrast colors on Light Canvas
 });
 
-// Color palettes for vector velocity mapping
+// Perceptually uniform sequential color scales for magnitude mapping
 const COLOR_PALETTES = {
   viridis: {
     name: 'Viridis (Standard)',
@@ -112,17 +110,17 @@ function VectorFieldParticles({
       posArr[i * 6 + 1] = py;
       posArr[i * 6 + 2] = pz;
 
-      // Tail position (initially offset slightly)
+      // Tail position
       posArr[i * 6 + 3] = px - 0.1;
       posArr[i * 6 + 4] = py - 0.1;
       posArr[i * 6 + 5] = pz - 0.1;
 
-      // Initial color values
+      // Initial colors
       for (let v = 0; v < 2; v++) {
         colArr[i * 8 + v * 4 + 0] = palette.slow.r;
         colArr[i * 8 + v * 4 + 1] = palette.slow.g;
         colArr[i * 8 + v * 4 + 2] = palette.slow.b;
-        colArr[i * 8 + v * 4 + 3] = 0.0; // Start transparent
+        colArr[i * 8 + v * 4 + 3] = 0.0;
       }
     }
 
@@ -178,9 +176,17 @@ function VectorFieldParticles({
       // Respawn check: if dead or out of 12x12x12 bounds [-6, 6]
       const outOfBounds = Math.abs(x) > HALF_BOX || Math.abs(y) > HALF_BOX || Math.abs(z) > HALF_BOX;
       if (lifespan <= 0 || outOfBounds) {
-        x = (Math.random() - 0.5) * (BOX_SIZE * 0.95);
-        y = (Math.random() - 0.5) * (BOX_SIZE * 0.95);
-        z = (Math.random() - 0.5) * (BOX_SIZE * 0.95);
+        if (mode === 'dipole' && Math.random() < 0.7) {
+          // Fix Dipole Particle Starvation: Force 70% of dead particles to respawn precisely at the Source (2.5, 0, 0) with a slight randomized jitter
+          x = 2.5 + (Math.random() - 0.5) * 0.5;
+          y = (Math.random() - 0.5) * 0.5;
+          z = (Math.random() - 0.5) * 0.5;
+        } else {
+          // Remaining 30% (or non-dipole modes) spawn randomly in the bounding box
+          x = (Math.random() - 0.5) * (BOX_SIZE * 0.95);
+          y = (Math.random() - 0.5) * (BOX_SIZE * 0.95);
+          z = (Math.random() - 0.5) * (BOX_SIZE * 0.95);
+        }
         lifespan = 1.0;
       }
 
@@ -193,7 +199,7 @@ function VectorFieldParticles({
         vy = x * 1.2;
         vz = 0.5 * Math.sin(x * 0.5) * Math.cos(y * 0.5) * 2.0;
       } else if (mode === 'dipole') {
-        // Dipole (Divergence-heavy): Source at (2,0,0), Sink at (-2,0,0)
+        // Dipole (Divergence-heavy): Source at (2.5,0,0), Sink at (-2.5,0,0)
         const s1x = 2.5, s1y = 0, s1z = 0; // Source
         const s2x = -2.5, s2y = 0, s2z = 0; // Sink
 
@@ -267,16 +273,16 @@ function VectorFieldParticles({
         b = THREE.MathUtils.lerp(cMid.b, cFast.b, t);
       }
 
-      // Set RGBA color attributes for both Head (vertex 0) and Tail (vertex 1 with slightly dimmer alpha)
+      // Set RGBA color attributes for both Head (vertex 0) and Tail (vertex 1)
       colData[i * 8 + 0] = r;
       colData[i * 8 + 1] = g;
       colData[i * 8 + 2] = b;
-      colData[i * 8 + 3] = opacity * 0.9; // Head opacity
+      colData[i * 8 + 3] = opacity * 0.95; // Head opacity
 
       colData[i * 8 + 4] = r;
       colData[i * 8 + 5] = g;
       colData[i * 8 + 6] = b;
-      colData[i * 8 + 7] = opacity * 0.2; // Tail opacity (tapered tail)
+      colData[i * 8 + 7] = opacity * 0.3; // Tail opacity
     }
 
     posAttr.needsUpdate = true;
@@ -303,7 +309,7 @@ function VectorFieldParticles({
 }
 
 /**
- * Wireframe Bounding Box (12x12x12)
+ * Subtle Bounding Box Wireframe for Scientific Light Theme
  */
 function BoundingCube({ showBox }) {
   if (!showBox) return null;
@@ -311,7 +317,7 @@ function BoundingCube({ showBox }) {
     <group>
       <mesh>
         <boxGeometry args={[BOX_SIZE, BOX_SIZE, BOX_SIZE]} />
-        <meshBasicMaterial color="#38bdf8" wireframe transparent opacity={0.15} />
+        <meshBasicMaterial color="#64748b" wireframe transparent opacity={0.2} />
       </mesh>
       {/* Corner indicator dots */}
       {[
@@ -320,7 +326,7 @@ function BoundingCube({ showBox }) {
       ].map((pos, idx) => (
         <mesh key={idx} position={pos}>
           <sphereGeometry args={[0.08, 8, 8]} />
-          <meshBasicMaterial color="#38bdf8" transparent opacity={0.6} />
+          <meshBasicMaterial color="#475569" transparent opacity={0.4} />
         </mesh>
       ))}
     </group>
@@ -337,12 +343,12 @@ function DipoleMarkers({ mode }) {
       {/* Source (+ Charge / Outflow) */}
       <mesh position={[2.5, 0, 0]}>
         <sphereGeometry args={[0.3, 16, 16]} />
-        <meshBasicMaterial color="#ef4444" transparent opacity={0.8} />
+        <meshBasicMaterial color="#dc2626" transparent opacity={0.85} />
       </mesh>
       {/* Sink (- Charge / Inflow) */}
       <mesh position={[-2.5, 0, 0]}>
         <sphereGeometry args={[0.3, 16, 16]} />
-        <meshBasicMaterial color="#3b82f6" transparent opacity={0.8} />
+        <meshBasicMaterial color="#2563eb" transparent opacity={0.85} />
       </mesh>
     </group>
   );
@@ -368,34 +374,51 @@ export default function App() {
     tornado: {
       title: 'Tornado Vortex Field',
       type: 'Curl-Heavy / Rotational Flow',
-      equation: 'v_x = -y,  v_y = x,  v_z = 0.5 · sin(0.5x) · cos(0.5y)',
+      equation: 'v_x = -1.2y,  v_y = 1.2x,  v_z = 0.5 · sin(0.5x) · cos(0.5y)',
       desc: 'Simulates an atmospheric rotational vortex system with helical vertical displacement based on spatial trig functions.'
     },
     dipole: {
       title: 'Dipole Field (Source & Sink)',
       type: 'Divergence-Heavy / Electromagnetic Flow',
       equation: 'V(P) = k · [ (P - S₁) / |P - S₁|³ - (P - S₂) / |P - S₂|³ ]',
-      desc: 'Models electromagnetic or fluid source (+2.5,0,0) emitting flow and sink (-2.5,0,0) absorbing flow following inverse-squared dynamics.'
+      desc: 'Models flow emitting from Source (+2.5,0,0) and absorbing into Sink (-2.5,0,0) with 70% continuous source injection.'
     },
     saddle: {
       title: 'Saddle Point Field',
       type: 'Hyperbolic Equilibrium Flow',
-      equation: 'v_x = 0.5x,  v_y = -0.5y,  v_z = -0.3z',
-      desc: 'Represents a unstable equilibrium point where flow converges along y and z axes while diverging away along the x axis.'
+      equation: 'v_x = 0.6x,  v_y = -0.6y,  v_z = -0.3z',
+      desc: 'Represents an unstable equilibrium point where flow converges along y and z axes while diverging away along the x axis.'
     }
   };
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-slate-950">
-      {/* R3F 3D Canvas */}
+    <div className="relative w-screen h-screen overflow-hidden bg-slate-50">
+      {/* R3F 3D Canvas with Scientific Light Background */}
       <Canvas
         camera={{ position: [12, 10, 14], fov: 45 }}
         gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
-        className="w-full h-full bg-slate-950"
+        className="w-full h-full bg-slate-50"
       >
-        <color attach="background" args={['#030712']} />
+        <color attach="background" args={['#f8fafc']} />
 
-        <ambientLight intensity={0.5} />
+        <ambientLight intensity={0.8} />
+
+        {/* Spatial Axis Helper at Center (Origin) */}
+        <axesHelper args={[8]} />
+
+        {/* Spatial Engineering Grid at Bottom of Bounding Box (Y = -6) */}
+        <Grid
+          position={[0, -6, 0]}
+          args={[12, 12]}
+          cellSize={1}
+          cellThickness={1}
+          cellColor="#cbd5e1"
+          sectionSize={3}
+          sectionThickness={1.5}
+          sectionColor="#64748b"
+          fadeDistance={30}
+          infiniteGrid={false}
+        />
 
         <VectorFieldParticles
           mode={mode}
@@ -410,6 +433,7 @@ export default function App() {
         <BoundingCube showBox={showBoundingBox} />
         <DipoleMarkers mode={mode} />
 
+        {/* Camera OrbitControls */}
         <OrbitControls
           makeDefault
           autoRotate={autoRotate}
@@ -426,25 +450,25 @@ export default function App() {
 
         {/* Top Bar: Title & Stats HUD */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="pointer-events-auto glass-panel px-5 py-3.5 rounded-2xl border border-slate-800/80 shadow-2xl flex items-center gap-3">
-            <div className="p-2.5 bg-sky-500/10 rounded-xl border border-sky-500/20 text-sky-400">
+          <div className="pointer-events-auto glass-panel px-5 py-3.5 rounded-2xl shadow-xl flex items-center gap-3">
+            <div className="p-2.5 bg-sky-500/10 rounded-xl border border-sky-500/30 text-sky-600">
               <Sparkles className="w-5 h-5 animate-pulse" />
             </div>
             <div>
-              <h1 className="text-base font-semibold tracking-wide text-slate-100 flex items-center gap-2">
+              <h1 className="text-base font-semibold tracking-wide text-slate-900 flex items-center gap-2">
                 3D Vector Field Visualizer
-                <span className="text-[10px] font-mono font-medium uppercase tracking-wider bg-sky-500/20 text-sky-300 px-2 py-0.5 rounded-full border border-sky-500/30">
+                <span className="text-[10px] font-mono font-medium uppercase tracking-wider bg-sky-500/15 text-sky-700 px-2 py-0.5 rounded-full border border-sky-500/30">
                   Eulerian Flow
                 </span>
               </h1>
-              <p className="text-xs text-slate-400 font-mono mt-0.5">
-                {particleCount.toLocaleString()} Active Streamlines • {fps} FPS
+              <p className="text-xs text-slate-500 font-mono mt-0.5">
+                {particleCount.toLocaleString()} Streamlines • {fps} FPS
               </p>
             </div>
           </div>
 
           {/* Mode Switcher Buttons */}
-          <div className="pointer-events-auto glass-panel p-1.5 rounded-2xl border border-slate-800/80 flex items-center gap-1 shadow-2xl">
+          <div className="pointer-events-auto glass-panel p-1.5 rounded-2xl flex items-center gap-1 shadow-xl">
             {[
               { id: 'tornado', name: 'Tornado', icon: Compass },
               { id: 'dipole', name: 'Dipole', icon: Activity },
@@ -456,12 +480,13 @@ export default function App() {
                 <button
                   key={item.id}
                   onClick={() => setMode(item.id)}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium transition-all ${isActive
-                    ? 'glass-button-active text-sky-300 font-semibold shadow-lg'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                    }`}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium transition-all ${
+                    isActive
+                      ? 'glass-button-active font-semibold shadow-md'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
                 >
-                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-sky-400' : ''}`} />
+                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-sky-600' : ''}`} />
                   {item.name}
                 </button>
               );
@@ -473,15 +498,15 @@ export default function App() {
         <div className="flex flex-col md:flex-row justify-between items-end gap-4">
 
           {/* Left Panel: Equation HUD & Info Toggle */}
-          <div className="pointer-events-auto glass-panel p-4 rounded-2xl border border-slate-800/80 max-w-sm w-full shadow-2xl space-y-3">
+          <div className="pointer-events-auto glass-panel p-4 rounded-2xl max-w-sm w-full shadow-xl space-y-3">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-semibold text-slate-200">
-                <Info className="w-4 h-4 text-sky-400" />
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-800">
+                <Info className="w-4 h-4 text-sky-600" />
                 <span>Field Dynamics</span>
               </div>
               <button
                 onClick={() => setShowInfo(!showInfo)}
-                className="text-[11px] font-mono text-sky-400 hover:text-sky-300 flex items-center gap-1 hover:underline"
+                className="text-[11px] font-mono text-sky-600 hover:text-sky-700 flex items-center gap-1 hover:underline"
               >
                 {showInfo ? 'Hide Math' : 'Show Math'}
                 <ChevronRight className={`w-3 h-3 transition-transform ${showInfo ? 'rotate-90' : ''}`} />
@@ -489,20 +514,20 @@ export default function App() {
             </div>
 
             <div>
-              <div className="text-sm font-semibold text-slate-100">
+              <div className="text-sm font-semibold text-slate-900">
                 {modeDescriptions[mode].title}
               </div>
-              <div className="text-xs text-slate-400 mt-0.5">
+              <div className="text-xs text-slate-500 mt-0.5">
                 {modeDescriptions[mode].type}
               </div>
             </div>
 
             {showInfo && (
-              <div className="pt-2 border-t border-slate-800/80 space-y-2 text-xs animate-fadeIn">
-                <div className="bg-slate-900/90 p-2.5 rounded-xl font-mono text-[11px] text-sky-300 border border-slate-800 overflow-x-auto">
+              <div className="pt-2 border-t border-slate-200/80 space-y-2 text-xs animate-fadeIn">
+                <div className="bg-slate-100/90 p-2.5 rounded-xl font-mono text-[11px] text-sky-800 border border-slate-200 overflow-x-auto">
                   {modeDescriptions[mode].equation}
                 </div>
-                <p className="text-slate-400 leading-relaxed text-[11px]">
+                <p className="text-slate-600 leading-relaxed text-[11px]">
                   {modeDescriptions[mode].desc}
                 </p>
               </div>
@@ -510,18 +535,18 @@ export default function App() {
           </div>
 
           {/* Right Panel: Interactive Sliders & Toggles */}
-          <div className="pointer-events-auto glass-panel p-4 md:p-5 rounded-2xl border border-slate-800/80 max-w-md w-full shadow-2xl space-y-4">
+          <div className="pointer-events-auto glass-panel p-4 md:p-5 rounded-2xl max-w-md w-full shadow-xl space-y-4">
 
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2 text-xs font-semibold text-slate-200">
-                <Sliders className="w-4 h-4 text-sky-400" />
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-800">
+                <Sliders className="w-4 h-4 text-sky-600" />
                 <span>Simulation Parameters</span>
               </div>
 
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => setIsPaused(!isPaused)}
-                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+                  className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 transition-colors"
                   title={isPaused ? "Play Simulation" : "Pause Simulation"}
                 >
                   {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
@@ -532,7 +557,7 @@ export default function App() {
                     setTailLength(1.0);
                     setParticleCount(7500);
                   }}
-                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+                  className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 transition-colors"
                   title="Reset Parameters"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
@@ -545,9 +570,9 @@ export default function App() {
 
               {/* Particle Count Slider */}
               <div className="space-y-1">
-                <div className="flex justify-between text-slate-300 font-medium">
+                <div className="flex justify-between text-slate-700 font-medium">
                   <span>Particle Count</span>
-                  <span className="font-mono text-sky-400">{particleCount.toLocaleString()}</span>
+                  <span className="font-mono text-sky-600">{particleCount.toLocaleString()}</span>
                 </div>
                 <input
                   type="range"
@@ -556,15 +581,15 @@ export default function App() {
                   step="500"
                   value={particleCount}
                   onChange={(e) => setParticleCount(Number(e.target.value))}
-                  className="w-full accent-sky-400 bg-slate-800 h-1.5 rounded-lg cursor-pointer"
+                  className="w-full accent-sky-600 bg-slate-200 h-1.5 rounded-lg cursor-pointer"
                 />
               </div>
 
               {/* Flow Speed Slider */}
               <div className="space-y-1">
-                <div className="flex justify-between text-slate-300 font-medium">
+                <div className="flex justify-between text-slate-700 font-medium">
                   <span>Flow Speed</span>
-                  <span className="font-mono text-sky-400">{flowSpeed.toFixed(1)}x</span>
+                  <span className="font-mono text-sky-600">{flowSpeed.toFixed(1)}x</span>
                 </div>
                 <input
                   type="range"
@@ -573,15 +598,15 @@ export default function App() {
                   step="0.1"
                   value={flowSpeed}
                   onChange={(e) => setFlowSpeed(Number(e.target.value))}
-                  className="w-full accent-sky-400 bg-slate-800 h-1.5 rounded-lg cursor-pointer"
+                  className="w-full accent-sky-600 bg-slate-200 h-1.5 rounded-lg cursor-pointer"
                 />
               </div>
 
               {/* Tail Length Slider */}
               <div className="space-y-1">
-                <div className="flex justify-between text-slate-300 font-medium">
+                <div className="flex justify-between text-slate-700 font-medium">
                   <span>Tail Scale</span>
-                  <span className="font-mono text-sky-400">{tailLength.toFixed(1)}x</span>
+                  <span className="font-mono text-sky-600">{tailLength.toFixed(1)}x</span>
                 </div>
                 <input
                   type="range"
@@ -590,27 +615,28 @@ export default function App() {
                   step="0.1"
                   value={tailLength}
                   onChange={(e) => setTailLength(Number(e.target.value))}
-                  className="w-full accent-sky-400 bg-slate-800 h-1.5 rounded-lg cursor-pointer"
+                  className="w-full accent-sky-600 bg-slate-200 h-1.5 rounded-lg cursor-pointer"
                 />
               </div>
 
             </div>
 
             {/* Palette & Toggle Controls */}
-            <div className="pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
+            <div className="pt-2 border-t border-slate-200/80 flex flex-wrap items-center justify-between gap-2">
 
               {/* Color Palette Selector */}
               <div className="flex items-center gap-1.5">
-                <Palette className="w-3.5 h-3.5 text-slate-400" />
-                <span className="text-[11px] text-slate-400">Palette:</span>
+                <Palette className="w-3.5 h-3.5 text-slate-500" />
+                <span className="text-[11px] text-slate-500">Palette:</span>
                 {Object.keys(COLOR_PALETTES).map((key) => (
                   <button
                     key={key}
                     onClick={() => setColorPaletteKey(key)}
-                    className={`px-2 py-0.5 rounded text-[10px] font-mono transition-all ${colorPaletteKey === key
-                      ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40'
-                      : 'bg-slate-800 text-slate-400 hover:text-slate-200'
-                      }`}
+                    className={`px-2 py-0.5 rounded text-[10px] font-mono transition-all ${
+                      colorPaletteKey === key
+                        ? 'bg-sky-500/20 text-sky-700 border border-sky-500/40 font-semibold'
+                        : 'bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+                    }`}
                   >
                     {COLOR_PALETTES[key].name.split(' ')[0]}
                   </button>
@@ -621,21 +647,26 @@ export default function App() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowBoundingBox(!showBoundingBox)}
-                  className={`px-2 py-1 rounded text-[11px] font-medium transition-all ${showBoundingBox
-                    ? 'bg-slate-800 text-sky-300 border border-sky-500/30'
-                    : 'bg-slate-900 text-slate-500'
-                    }`}
+                  className={`px-2 py-1 rounded text-[11px] font-medium transition-all ${
+                    showBoundingBox
+                      ? 'bg-sky-500/15 text-sky-700 border border-sky-500/40'
+                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                  }`}
                 >
                   Box
                 </button>
+                
+                {/* Functional & Prominent Auto-Rotate Toggle Button */}
                 <button
                   onClick={() => setAutoRotate(!autoRotate)}
-                  className={`px-2 py-1 rounded text-[11px] font-medium transition-all ${autoRotate
-                    ? 'bg-slate-800 text-sky-300 border border-sky-500/30'
-                    : 'bg-slate-900 text-slate-500'
-                    }`}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium transition-all ${
+                    autoRotate
+                      ? 'bg-sky-500/15 text-sky-700 border border-sky-500/40 font-semibold shadow-sm'
+                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                  }`}
                 >
-                  Rotate
+                  <RotateCw className={`w-3 h-3 ${autoRotate ? 'animate-spin' : ''}`} style={{ animationDuration: '6s' }} />
+                  <span>Auto-Rotate: {autoRotate ? 'ON' : 'OFF'}</span>
                 </button>
               </div>
 

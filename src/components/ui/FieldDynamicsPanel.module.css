@@ -1,0 +1,92 @@
+.panelContainer {
+  pointer-events: auto;
+  background: var(--panel-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--panel-border);
+  box-shadow: var(--panel-shadow);
+  padding: 1rem;
+  border-radius: 1rem;
+  max-width: 24rem;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.headerTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.toggleButton {
+  font-size: 11px;
+  font-family: 'Fira Code', monospace;
+  color: var(--accent-color);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.toggleButton:hover {
+  text-decoration: underline;
+}
+
+.modeTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.modeType {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.125rem;
+}
+
+.mathSection {
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--panel-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.equationBox {
+  background: var(--card-bg);
+  padding: 0.625rem;
+  border-radius: 0.75rem;
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
+  color: var(--accent-color);
+  border: 1px solid var(--panel-border);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.descriptionText {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.chevronIcon {
+  transition: transform 0.2s ease;
+}
+
+.chevronRotated {
+  transform: rotate(90deg);
+}

@@ -1,0 +1,166 @@
+.panelContainer {
+  pointer-events: auto;
+  background: var(--panel-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--panel-border);
+  box-shadow: var(--panel-shadow);
+  padding: 1.25rem;
+  border-radius: 1rem;
+  max-width: 28rem;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--panel-border);
+  padding-bottom: 0.75rem;
+}
+
+.headerTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.actionButtons {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.iconButton {
+  padding: 0.375rem;
+  border-radius: 0.5rem;
+  background: var(--card-bg);
+  border: 1px solid var(--panel-border);
+  color: var(--text-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+
+.iconButton:hover {
+  background: var(--button-hover-bg);
+}
+
+.slidersGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+}
+
+.sliderRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sliderLabelRow {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.sliderValue {
+  font-family: 'Fira Code', monospace;
+  color: var(--accent-color);
+}
+
+.sliderInput {
+  width: 100%;
+  accent-color: var(--accent-color);
+  background: var(--button-hover-bg);
+  height: 0.375rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.footerRow {
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--panel-border);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.paletteGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.paletteLabel {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.paletteButton {
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 10px;
+  font-family: 'Fira Code', monospace;
+  background: var(--card-bg);
+  border: 1px solid var(--panel-border);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.paletteButtonActive {
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+  color: var(--accent-color);
+  font-weight: 600;
+}
+
+.togglesGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.toggleButton {
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.5rem;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--card-bg);
+  border: 1px solid var(--panel-border);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: all 0.2s ease;
+}
+
+.toggleButtonActive {
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+  color: var(--accent-color);
+  font-weight: 600;
+}
+
+.spinAnimation {
+  animation: spin 6s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

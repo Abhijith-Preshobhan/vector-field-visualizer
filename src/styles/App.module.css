@@ -1,0 +1,45 @@
+.appContainer {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  user-select: none;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
+
+.canvasWrapper {
+  width: 100%;
+  height: 100%;
+}
+
+.uiOverlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1rem;
+  z-index: 10;
+}
+
+@media (min-width: 768px) {
+  .uiOverlay {
+    padding: 1.5rem;
+  }
+}
+
+.bottomPanels {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .bottomPanels {
+    flex-direction: row;
+  }
+}

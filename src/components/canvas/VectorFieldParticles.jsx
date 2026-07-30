@@ -129,10 +129,18 @@ export default function VectorFieldParticles({
       const outOfBounds = Math.abs(x) > HALF_BOX || Math.abs(y) > HALF_BOX || Math.abs(z) > HALF_BOX;
       if (lifespan <= 0 || outOfBounds) {
         if (mode === 'dipole') {
-          // Force respawn coordinates x, y, z to be exactly at Source (2.5, 0, 0) with a tiny random jitter
-          x = 2.5 + (Math.random() - 0.5) * 0.2;
-          y = 0.0 + (Math.random() - 0.5) * 0.2;
-          z = 0.0 + (Math.random() - 0.5) * 0.2;
+          // Probabilistic Hybrid Spawning: 50% Source (2.5, 0, 0), 50% Ambient bounding box
+          if (Math.random() < 0.5) {
+            // Source Spawning with 0.5 randomized jitter
+            x = 2.5 + (Math.random() - 0.5) * 0.5;
+            y = 0.0 + (Math.random() - 0.5) * 0.5;
+            z = 0.0 + (Math.random() - 0.5) * 0.5;
+          } else {
+            // Ambient Spawning within standard bounding box
+            x = (Math.random() - 0.5) * (BOX_SIZE * 0.95);
+            y = (Math.random() - 0.5) * (BOX_SIZE * 0.95);
+            z = (Math.random() - 0.5) * (BOX_SIZE * 0.95);
+          }
         } else {
           // Uniform random bounding box respawn for all other modes
           x = (Math.random() - 0.5) * (BOX_SIZE * 0.95);

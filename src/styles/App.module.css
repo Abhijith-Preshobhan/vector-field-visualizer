@@ -2,6 +2,7 @@
   position: relative;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   user-select: none;
   background-color: var(--bg-color);
@@ -21,6 +22,7 @@
   flex-direction: column;
   justify-content: space-between;
   padding: 0.75rem;
+  padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
   z-index: 10;
 }
 
@@ -48,12 +50,12 @@
 
 /* Mobile Backdrop Overlay (<768px) */
 .mobileBackdrop {
-  position: absolute;
+  position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.25);
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
-  z-index: 15;
+  z-index: 80;
   pointer-events: auto;
 }
 
@@ -65,14 +67,14 @@
 
 /* Mobile Slide-Up Drawer Sheet (<768px) */
 .mobileDrawerSheet {
-  position: absolute;
-  bottom: 4.5rem;
+  position: fixed;
+  bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
   left: 0.75rem;
   right: 0.75rem;
-  z-index: 20;
+  z-index: 90;
   pointer-events: auto;
   animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  max-height: 70vh;
+  max-height: calc(70vh - env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
 }
 
@@ -96,8 +98,8 @@
 /* Mobile Floating Action Dock Bar (<768px) */
 .mobileDockBar {
   pointer-events: auto;
-  position: absolute;
-  bottom: 0.875rem;
+  position: fixed;
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -110,7 +112,9 @@
   border: 1px solid var(--panel-border);
   box-shadow: var(--panel-shadow);
   border-radius: 9999px;
-  z-index: 25;
+  z-index: 100;
+  width: max-content;
+  max-width: calc(100vw - 1.5rem);
 }
 
 @media (min-width: 768px) {
@@ -133,6 +137,7 @@
   cursor: pointer;
   transition: all 0.2s ease;
   min-height: 40px;
+  white-space: nowrap;
 }
 
 .mobileDockButton:hover {
@@ -146,4 +151,5 @@
   color: var(--accent-color);
   font-weight: 600;
 }
+
 

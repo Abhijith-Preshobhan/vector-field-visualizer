@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { Info, ChevronRight } from 'lucide-react';
+import { Info, ChevronRight, X } from 'lucide-react';
 import { MODE_DESCRIPTIONS } from '../../constants/fieldConstants';
 import styles from './FieldDynamicsPanel.module.css';
 
 /**
  * Bottom-left Mathematical Field Dynamics Information Panel
  */
-export default function FieldDynamicsPanel({ mode }) {
+export default function FieldDynamicsPanel({ mode, onClose }) {
   const [showInfo, setShowInfo] = useState(false);
   const currentInfo = MODE_DESCRIPTIONS[mode] || MODE_DESCRIPTIONS.tornado;
 
@@ -17,16 +17,28 @@ export default function FieldDynamicsPanel({ mode }) {
           <Info size={16} color="var(--accent-color)" />
           <span>Field Dynamics</span>
         </div>
-        <button
-          onClick={() => setShowInfo(!showInfo)}
-          className={styles.toggleButton}
-        >
-          {showInfo ? 'Hide Math' : 'Show Math'}
-          <ChevronRight
-            size={12}
-            className={`${styles.chevronIcon} ${showInfo ? styles.chevronRotated : ''}`}
-          />
-        </button>
+        <div className={styles.headerControls}>
+          <button
+            onClick={() => setShowInfo(!showInfo)}
+            className={styles.toggleButton}
+          >
+            {showInfo ? 'Hide Math' : 'Show Math'}
+            <ChevronRight
+              size={12}
+              className={`${styles.chevronIcon} ${showInfo ? styles.chevronRotated : ''}`}
+            />
+          </button>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className={styles.closeButton}
+              title="Close Panel"
+              aria-label="Close Panel"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
       </div>
 
       <div>
@@ -47,3 +59,4 @@ export default function FieldDynamicsPanel({ mode }) {
     </div>
   );
 }
+

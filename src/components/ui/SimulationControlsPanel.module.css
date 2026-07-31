@@ -5,14 +5,21 @@
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--panel-border);
   box-shadow: var(--panel-shadow);
-  padding: 1.25rem;
+  padding: 1rem;
   border-radius: 1rem;
-  max-width: 28rem;
   width: 100%;
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
+
+@media (min-width: 768px) {
+  .panelContainer {
+    padding: 1.25rem;
+    max-width: 28rem;
+  }
+}
+
 
 .panelHeader {
   display: flex;
@@ -48,11 +55,34 @@
   align-items: center;
   justify-content: center;
   transition: background 0.2s ease;
+  min-width: 32px;
+  min-height: 32px;
 }
 
 .iconButton:hover {
   background: var(--button-hover-bg);
 }
+
+.closeButton {
+  padding: 0.375rem;
+  border-radius: 0.5rem;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease, background 0.2s ease;
+  min-width: 32px;
+  min-height: 32px;
+}
+
+.closeButton:hover {
+  color: var(--text-color);
+  background: var(--button-hover-bg);
+}
+
 
 .slidersGrid {
   display: flex;

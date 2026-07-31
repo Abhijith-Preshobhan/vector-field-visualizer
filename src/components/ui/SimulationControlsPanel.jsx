@@ -5,7 +5,8 @@ import {
   Pause,
   RotateCcw,
   Palette,
-  RotateCw
+  RotateCw,
+  X
 } from 'lucide-react';
 import {
   COLOR_PALETTES_LIGHT,
@@ -31,7 +32,8 @@ export default function SimulationControlsPanel({
   setAutoRotate,
   isPaused,
   setIsPaused,
-  isDarkMode
+  isDarkMode,
+  onClose
 }) {
   const activePalettes = isDarkMode ? COLOR_PALETTES_DARK : COLOR_PALETTES_LIGHT;
 
@@ -63,6 +65,16 @@ export default function SimulationControlsPanel({
           >
             <RotateCcw size={14} />
           </button>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className={styles.closeButton}
+              title="Close Panel"
+              aria-label="Close Panel"
+            >
+              <X size={16} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -157,3 +169,4 @@ export default function SimulationControlsPanel({
     </div>
   );
 }
+

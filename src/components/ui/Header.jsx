@@ -31,11 +31,12 @@ export default function Header({
       {/* Title & Telemetry Badge */}
       <div className={styles.brandBadge}>
         <div className={styles.brandIcon}>
-          <Sparkles size={20} />
+          <Sparkles size={18} />
         </div>
-        <div>
+        <div className={styles.brandContent}>
           <h1 className={styles.titleText}>
-            3D Vector Field Visualizer
+            <span className={styles.titleFull}>3D Vector Field Visualizer</span>
+            <span className={styles.titleCompact}>Vector Field 3D</span>
             <span className={styles.tagBadge}>Eulerian Flow</span>
           </h1>
           <p className={styles.subtitleText}>
@@ -56,9 +57,10 @@ export default function Header({
                 key={item.id}
                 onClick={() => setMode(item.id)}
                 className={`${styles.modeButton} ${isActive ? styles.modeButtonActive : ''}`}
+                title={item.name}
               >
                 <Icon size={14} color={isActive ? 'var(--accent-color)' : undefined} />
-                {item.name}
+                <span className={styles.modeName}>{item.name}</span>
               </button>
             );
           })}
@@ -81,3 +83,4 @@ export default function Header({
     </div>
   );
 }
+

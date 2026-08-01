@@ -11,14 +11,16 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  max-height: calc(100vh - 5rem);
+  overflow-y: auto;
 }
 
 @media (min-width: 768px) {
   .panelContainer {
-    max-width: 24rem;
+    width: 24rem;
+    max-width: 26rem;
   }
 }
-
 
 .panelHeader {
   display: flex;
@@ -30,9 +32,15 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--text-color);
+}
+
+.headerControls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .toggleButton {
@@ -51,48 +59,12 @@
   text-decoration: underline;
 }
 
-.modeTitle {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--text-color);
+.chevronIcon {
+  transition: transform 0.2s ease;
 }
 
-.modeType {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  margin-top: 0.125rem;
-}
-
-.mathSection {
-  padding-top: 0.5rem;
-  border-top: 1px solid var(--panel-border);
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.equationBox {
-  background: var(--card-bg);
-  padding: 0.625rem;
-  border-radius: 0.75rem;
-  font-family: 'Fira Code', monospace;
-  font-size: 11px;
-  color: var(--accent-color);
-  border: 1px solid var(--panel-border);
-  overflow-x: auto;
-  white-space: nowrap;
-}
-
-.descriptionText {
-  color: var(--text-muted);
-  font-size: 11px;
-  line-height: 1.5;
-}
-
-.headerControls {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.chevronRotated {
+  transform: rotate(90deg);
 }
 
 .closeButton {
@@ -113,3 +85,139 @@
   background: var(--button-hover-bg);
 }
 
+.modeTitle {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--text-color);
+  letter-spacing: -0.01em;
+}
+
+.modeType {
+  font-size: 0.75rem;
+  color: var(--accent-color);
+  font-weight: 500;
+  margin-top: 0.125rem;
+}
+
+.mathSection {
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--panel-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.formulaWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.formulaHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.formulaLabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.equationBox {
+  background: var(--card-bg);
+  padding: 0.75rem 0.875rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--panel-border);
+  overflow-x: auto;
+  overflow-y: hidden;
+  color: var(--text-color);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.operatorsRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.operatorBadge {
+  background: var(--card-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 0.625rem;
+  padding: 0.5rem 0.625rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 11px;
+}
+
+.badgeLabel {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.descriptionText {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.referenceContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding-top: 0.375rem;
+  border-top: 1px dashed var(--panel-border);
+}
+
+.referenceToggle {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-color);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem 0;
+  width: max-content;
+}
+
+.referenceToggle:hover {
+  text-decoration: underline;
+}
+
+.operatorsDetailBox {
+  background: var(--card-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 0.625rem;
+  padding: 0.625rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.operatorDetailItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 11px;
+}
+
+.operatorDetailName {
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}

@@ -4,13 +4,17 @@ import {
   Compass,
   Activity,
   Layers,
+  Wind,
+  Disc,
+  CircleDot,
+  Crosshair,
   Sun,
   Moon
 } from 'lucide-react';
 import styles from './Header.module.css';
 
 /**
- * Top Header Navigation & Mode Switcher Component
+ * Top Header Navigation & Vector Field Preset Switcher Component
  */
 export default function Header({
   mode,
@@ -23,7 +27,11 @@ export default function Header({
   const modeItems = [
     { id: 'tornado', name: 'Tornado', icon: Compass },
     { id: 'dipole', name: 'Dipole', icon: Activity },
-    { id: 'saddle', name: 'Saddle Point', icon: Layers },
+    { id: 'saddle', name: 'Saddle', icon: Layers },
+    { id: 'abc', name: 'ABC Chaos', icon: Wind },
+    { id: 'spiral_sink', name: 'Spiral Sink', icon: Disc },
+    { id: 'toroidal', name: 'Toroidal Ring', icon: CircleDot },
+    { id: 'quadrupole', name: 'Quadrupole', icon: Crosshair },
   ];
 
   return (
@@ -47,7 +55,7 @@ export default function Header({
 
       {/* Controls Group */}
       <div className={styles.controlsGroup}>
-        {/* Mode Switcher Buttons */}
+        {/* Mode Switcher Scrollable Bar */}
         <div className={styles.modeSwitcher}>
           {modeItems.map((item) => {
             const Icon = item.icon;
@@ -83,4 +91,3 @@ export default function Header({
     </div>
   );
 }
-

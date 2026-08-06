@@ -8,10 +8,12 @@ import {
   COLOR_PALETTES_DARK
 } from '../../constants/fieldConstants';
 import { FieldShaderMaterial } from '../../shaders/fieldShaders';
+import { evaluateVectorField, calculatePlaneNormal } from '../../utils/fieldEquations';
 
 /**
  * High-performance 3D Vector Field Particle Simulation Component
  * Supports 7 analytical 3D vector fields with Euler integration and magnitude color scaling.
+ * Supports 2D Slice Analytic Mode with particle distance filtering & motion freezing.
  */
 export default function VectorFieldParticles({
   mode,
@@ -21,9 +23,21 @@ export default function VectorFieldParticles({
   colorPaletteKey,
   isPaused,
   isDarkMode,
-  onFpsUpdate
+  onFpsUpdate,
+  isSliceActive = false,
+  slicePreset = 'xy',
+  sliceOffset = 0,
+  slicePitch = 0,
+  sliceYaw = 0,
+  sliceThickness = 0.4,
+  slicePhantomOpacity = 0.05
 }) {
   const geomRef = useRef();
+
+  // Compute plane normal vector for distance calculations during slice analysis
+  const sliceNormal = useMemo(() => {
+    return calculatePlaneNormal(slicePreset, slicePitch, sliceYaw);
+  }, [slicePreset, slicePitch, sliceYaw]);
 
   // Pick light or dark palettes dynamically
   const activePalettes = isDarkMode ? COLOR_PALETTES_DARK : COLOR_PALETTES_LIGHT;
@@ -88,6 +102,43 @@ export default function VectorFieldParticles({
       onFpsUpdate(fps);
       frameCountRef.current = 0;
       lastTimeRef.current = now;
+    }
+
+    // If 2D Slice mode is active, freeze particle integration and modulate vertex alphas based on plane distance
+    if (isSliceActive) {
+      const posAttr = geomRef.current.attributes.position;
+      const colAttr = geomRef.current.attributes.color;
+      const colData = colAttr.array;
+
+      const nx = sliceNormal.x;
+      const ny = sliceNormal.y;
+      const nz = sliceNormal.z;
+
+      for (let i = 0; i < particleCount; i++) {
+        const px = particleMeta[i * 4 + 0];
+        const py = particleMeta[i * 4 + 1];
+        const pz = particleMeta[i * 4 + 2];
+        const lifespan = particleMeta[i * 4 + 3];
+
+        // Calculate perpendicular distance to the slicing plane
+        const dist = Math.abs(px * nx + py * ny + pz * nz - sliceOffset);
+        const inPlane = dist <= sliceThickness;
+
+        const baseOpacity = Math.sin(lifespan * Math.PI);
+
+        if (inPlane) {
+          // Highlight particle inside 2D slice thickness zone
+          colData[i * 8 + 3] = baseOpacity * 0.98;
+          colData[i * 8 + 7] = baseOpacity * 0.45;
+        } else {
+          // Dim particle outside 2D slice plane zone
+          colData[i * 8 + 3] = slicePhantomOpacity;
+          colData[i * 8 + 7] = slicePhantomOpacity * 0.25;
+        }
+      }
+
+      colAttr.needsUpdate = true;
+      return;
     }
 
     if (isPaused) return;
